@@ -1,7 +1,7 @@
 {
   "name": "ReplaceBannerJSON",
   "description": "Plugin to replace the banner and reload the server",
-  "version": "1.420.69",
+  "version": "1.0.0",
   "authors": [ "harry2258" ],
   "api": 2,
   "mainClass": "xyz.grasscutters.pltm.PluginTemplate"

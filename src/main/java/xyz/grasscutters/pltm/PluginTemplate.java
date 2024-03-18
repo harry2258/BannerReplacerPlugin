@@ -9,9 +9,6 @@ import emu.grasscutter.plugin.Plugin;
 import xyz.grasscutters.pltm.objects.*;
 
 import java.io.*;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.stream.Collectors;
@@ -24,6 +21,7 @@ public final class PluginTemplate extends Plugin {
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     /* Turn the plugin into a singleton. */
     private static PluginTemplate instance;
+    private static int CurrentBanner;
 
     /**
      * Gets the plugin instance.
@@ -35,7 +33,13 @@ public final class PluginTemplate extends Plugin {
     
     /* The plugin's configuration instance. */
     private PluginConfig configuration;
-    
+
+    // Save State for the current banner that the program is on
+    private static final String STATE_FILE_PATH = "state.json";
+
+    // Load state from file
+    int lastProcessedIndex = loadState();
+
     /**
      * This method is called immediately after the plugin is first loaded into system memory.
      */
@@ -45,6 +49,7 @@ public final class PluginTemplate extends Plugin {
         
         // Get the configuration file.
         var config = new File(this.getDataFolder(), "config.json");
+
 
         // Load the configuration.
         try {
@@ -89,12 +94,18 @@ public final class PluginTemplate extends Plugin {
         String sourceFolderPath = "./bannersData/";
         String destinationFolderPath = "./data";
 
-        // Schedule the task to run every 30 minutes
+        if (lastProcessedIndex == -1) {
+            System.err.println("Failed to load state. Resuming from the beginning.");
+        } else {
+            System.out.println("Resuming from file index: " + lastProcessedIndex);
+        }
+
+        // Schedule the task to run every 10 seconds once the loop is done
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                replaceBannerJSON(sourceFolderPath, destinationFolderPath);
+                replaceBannerJSON(sourceFolderPath, destinationFolderPath, lastProcessedIndex);
             }
         }, 0, 10 * 1000);
 
@@ -117,7 +128,7 @@ public final class PluginTemplate extends Plugin {
         return this.configuration;
     }
 
-    private void replaceBannerJSON(String sourceFolderPath, String destinationFolderPath) {
+    private void replaceBannerJSON(String sourceFolderPath, String destinationFolderPath, int startIndex) {
         File sourceFolder = new File(sourceFolderPath);
         File[] files = sourceFolder.listFiles();
 
@@ -126,8 +137,9 @@ public final class PluginTemplate extends Plugin {
             return;
         }
 
-        // Iterate over all files in the source folder
-        for (File file : files) {
+        // Iterate over all files in the source
+        for (int i = startIndex; i < files.length; i++) {
+            File file = files[i];
 
             if (file.isFile()) {
                 String sourceFilePath = file.getAbsolutePath();
@@ -168,6 +180,8 @@ public final class PluginTemplate extends Plugin {
 
                     //Debug
                     this.getLogger().info("Replaced the banner with " + file.getName() +". Sleeping for "+ this.configuration.ReloadTime + " minutes.");
+                    saveState(lastProcessedIndex);
+
                 } catch (JsonParseException e) {
                     System.err.println("Error parsing JSON: " + e.getMessage());
                 }
@@ -186,6 +200,8 @@ public final class PluginTemplate extends Plugin {
                 }
             }
         }
+        // Set the lastProcessedIndex to 0
+        lastProcessedIndex = 0;
     }
 
     private void updateEndTime(JsonElement element) {
@@ -205,6 +221,39 @@ public final class PluginTemplate extends Plugin {
             for (JsonElement jsonElement : jsonArray) {
                 updateEndTime(jsonElement);
             }
+        }
+    }
+
+    private static void saveState(int lastProcessedIndex) {
+        try (FileWriter writer = new FileWriter(STATE_FILE_PATH)) {
+            writer.write(String.valueOf(lastProcessedIndex));
+        } catch (IOException e) {
+            System.err.println("Error saving state: " + e.getMessage());
+        }
+    }
+
+    private int loadState() {
+        File stateFile = new File(STATE_FILE_PATH);
+        if (!stateFile.exists()) {
+            try {
+                if (!stateFile.createNewFile()) {
+                    this.getLogger().error("Failed to create state file.");
+                    return 0;
+                }
+                // Initialize state file with initial index value (0)
+                saveState(0);
+            } catch (IOException e) {
+                this.getLogger().error("Error creating state file: " + e.getMessage());
+                return 0;
+            }
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(STATE_FILE_PATH))) {
+            String indexStr = reader.readLine();
+            return Integer.parseInt(indexStr);
+        } catch (IOException | NumberFormatException e) {
+            this.getLogger().error("Error loading state: " + e.getMessage());
+            return 0;
         }
     }
 }

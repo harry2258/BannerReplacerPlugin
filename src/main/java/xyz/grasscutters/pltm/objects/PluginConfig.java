@@ -14,9 +14,8 @@ import java.lang.reflect.Type;
  * You can set property defaults using `public Object property = (default value);`.
  * Use {@link Gson#fromJson(Reader, Type)} to load the values set from a reader/string into a new instance of this class.
  */
-public final class PluginConfig {
-    public boolean sendJoinMessage = true;
-    public String joinMessage = "Welcome to the server!";
+public class PluginConfig {
+    public long ReloadTime = 30;
 
     /**
      * When saved with {@link Gson#toJson(Object)}, it produces:

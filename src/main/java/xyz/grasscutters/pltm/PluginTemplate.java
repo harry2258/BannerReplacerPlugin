@@ -1,15 +1,19 @@
 package xyz.grasscutters.pltm;
 
+import com.google.gson.*;
+import com.google.gson.stream.JsonReader;
 import emu.grasscutter.Grasscutter;
+import emu.grasscutter.command.CommandHandler;
+import emu.grasscutter.game.player.Player;
 import emu.grasscutter.plugin.Plugin;
-import emu.grasscutter.server.event.EventHandler;
-import emu.grasscutter.server.event.HandlerPriority;
-import emu.grasscutter.server.event.player.PlayerJoinEvent;
-
-import xyz.grasscutters.pltm.commands.*;
 import xyz.grasscutters.pltm.objects.*;
 
 import java.io.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.stream.Collectors;
 
 /**
@@ -17,6 +21,7 @@ import java.util.stream.Collectors;
  * This is the main class for the plugin.
  */
 public final class PluginTemplate extends Plugin {
+    private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     /* Turn the plugin into a singleton. */
     private static PluginTemplate instance;
 
@@ -39,11 +44,13 @@ public final class PluginTemplate extends Plugin {
         instance = this;
         
         // Get the configuration file.
-        File config = new File(this.getDataFolder(), "config.json");
-        
+        var config = new File(this.getDataFolder(), "config.json");
+
         // Load the configuration.
         try {
-            if(!config.exists() && !config.createNewFile()) {
+            if(config.exists()) {
+                this.getLogger().info("[Banner Replacer] Loading config file");
+            } else if (!config.createNewFile()) {
                 this.getLogger().error("Failed to create config file.");
             } else {
                 try (FileWriter writer = new FileWriter(config)) {
@@ -61,30 +68,37 @@ public final class PluginTemplate extends Plugin {
             }
 
             // Put the configuration into an instance of the config class.
-            this.configuration = Grasscutter.getGsonFactory().fromJson(new FileReader(config), PluginConfig.class);
-        } catch (IOException exception) {
-            this.getLogger().error("Failed to create config file.", exception);
+            this.configuration = gson.fromJson(new FileReader(config), PluginConfig.class);
+
+
+            System.out.println("Set Reload time to: " + this.configuration.ReloadTime);
+
+        } catch (Exception exception) {
+            this.configuration.ReloadTime = 30; //Set to 30 mins if the JSON is invalid.
+            this.getLogger().error("Unable to load configuration file. Defaulting to 30 minutes");
         }
         
         // Log a plugin status message.
-        this.getLogger().info("The example plugin has been loaded.");
+        this.getLogger().info("The Banner Replacer plugin was loaded");
     }
 
     /**
      * This method is called before the servers are started, or when the plugin enables.
      */
     @Override public void onEnable() {
-        // Register event listeners.
-        new EventHandler<>(PlayerJoinEvent.class)
-                .priority(HandlerPriority.LOW)
-                .listener(EventListeners::onJoin)
-                .register();
-        
-        // Register commands.
-        this.getHandle().registerCommand(new ExampleCommand());
+        String sourceFolderPath = "./bannersData/";
+        String destinationFolderPath = "./data";
 
-        // Log a plugin status message.
-        this.getLogger().info("The example plugin has been enabled.");
+        // Schedule the task to run every 30 minutes
+        Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                replaceBannerJSON(sourceFolderPath, destinationFolderPath);
+            }
+        }, 0, 10 * 1000);
+
+        this.getLogger().info("The Banner Replacer plugin has been enabled.");
     }
 
     /**
@@ -101,5 +115,96 @@ public final class PluginTemplate extends Plugin {
      */
     public PluginConfig getConfiguration() {
         return this.configuration;
+    }
+
+    private void replaceBannerJSON(String sourceFolderPath, String destinationFolderPath) {
+        File sourceFolder = new File(sourceFolderPath);
+        File[] files = sourceFolder.listFiles();
+
+        if (files == null) {
+            System.err.println("Source folder is empty or does not exist.");
+            return;
+        }
+
+        // Iterate over all files in the source folder
+        for (File file : files) {
+
+            if (file.isFile()) {
+                String sourceFilePath = file.getAbsolutePath();
+
+                // Read contents from current file
+                StringBuilder fileContent = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(new FileReader(sourceFilePath))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        fileContent.append(line).append("\n");
+                    }
+                } catch (IOException e) {
+                    System.err.println("Error reading file: " + e.getMessage());
+                }
+
+                try {
+                    Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                    JsonParser parser = new JsonParser();
+                    JsonElement jsonElement = parser.parse(new JsonReader(new StringReader(fileContent.toString())));
+
+                    updateEndTime(jsonElement);
+
+                    // Write modified JSON content to 'Banners.json' file in destination folder
+                    String destinationFilePath = destinationFolderPath + "/Banners.json";
+                    try (BufferedWriter writer = new BufferedWriter(new FileWriter(destinationFilePath))) {
+                        gson.toJson(jsonElement, writer);
+                    } catch (IOException e) {
+                        System.err.println("Error writing Banners.json file: " + e.getMessage());
+                    }
+
+                    Grasscutter.getGameServer().getGachaSystem().load();
+                    Grasscutter.getGameServer().getShopSystem().load();
+
+                    //Send a messaged to all online user
+                    for (Player p : Grasscutter.getGameServer().getPlayers().values()) {
+                        CommandHandler.sendMessage(p, "Wish shop updated!");
+                    }
+
+                    //Debug
+                    this.getLogger().info("Replaced the banner with " + file.getName() +". Sleeping for "+ this.configuration.ReloadTime + " minutes.");
+                } catch (JsonParseException e) {
+                    System.err.println("Error parsing JSON: " + e.getMessage());
+                }
+
+
+                try {
+                    long SleepTime;
+                    if (this.configuration.ReloadTime <= 0) {
+                        SleepTime = 1;
+                    } else {
+                        SleepTime = this.configuration.ReloadTime;
+                    }
+                    Thread.sleep(SleepTime * 60 * 1000);  // sleep for configured minutes
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private void updateEndTime(JsonElement element) {
+        if (element.isJsonObject()) {
+            JsonObject jsonObject = element.getAsJsonObject();
+            for (String key : jsonObject.keySet()) {
+                JsonElement value = jsonObject.get(key);
+                if (value.isJsonObject() || value.isJsonArray()) {
+                    updateEndTime(value);
+                } else if (key.equals("endTime")) {
+                    long endTimeUnix = (System.currentTimeMillis() / 1000) + this.configuration.ReloadTime * 60; // Current Unix time + configured minutes
+                    jsonObject.addProperty(key, endTimeUnix);
+                }
+            }
+        } else if (element.isJsonArray()) {
+            JsonArray jsonArray = element.getAsJsonArray();
+            for (JsonElement jsonElement : jsonArray) {
+                updateEndTime(jsonElement);
+            }
+        }
     }
 }

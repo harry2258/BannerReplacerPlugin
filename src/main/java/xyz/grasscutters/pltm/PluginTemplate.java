@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
  * The Grasscutter plugin template.
  * This is the main class for the plugin.
  */
+@SuppressWarnings("deprecation")
 public final class PluginTemplate extends Plugin {
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     /* Turn the plugin into a singleton. */
@@ -35,10 +36,10 @@ public final class PluginTemplate extends Plugin {
     private PluginConfig configuration;
 
     // Save State for the current banner that the program is on
-    private static final String STATE_FILE_PATH = "state.json";
+    private String STATE_FILE_PATH;
 
-    // Load state from file
-    int lastProcessedIndex = loadState();
+    // Initilize int for state
+    int lastProcessedIndex = 0;
 
     /**
      * This method is called immediately after the plugin is first loaded into system memory.
@@ -46,10 +47,15 @@ public final class PluginTemplate extends Plugin {
     @Override public void onLoad() {
         // Set the plugin instance.
         instance = this;
-        
+
         // Get the configuration file.
         var config = new File(this.getDataFolder(), "config.json");
 
+        //Set location of the state file
+        STATE_FILE_PATH = this.getDataFolder().getPath() + "/state.json";
+
+        //Load state from file
+        lastProcessedIndex = loadState();
 
         // Load the configuration.
         try {
@@ -157,6 +163,7 @@ public final class PluginTemplate extends Plugin {
 
                 try {
                     Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
                     JsonParser parser = new JsonParser();
                     JsonElement jsonElement = parser.parse(new JsonReader(new StringReader(fileContent.toString())));
 
@@ -180,6 +187,7 @@ public final class PluginTemplate extends Plugin {
 
                     //Debug
                     this.getLogger().info("Replaced the banner with " + file.getName() +". Sleeping for "+ this.configuration.ReloadTime + " minutes.");
+                    lastProcessedIndex = i;
                     saveState(lastProcessedIndex);
 
                 } catch (JsonParseException e) {
@@ -224,7 +232,7 @@ public final class PluginTemplate extends Plugin {
         }
     }
 
-    private static void saveState(int lastProcessedIndex) {
+    private void saveState(int lastProcessedIndex) {
         try (FileWriter writer = new FileWriter(STATE_FILE_PATH)) {
             writer.write(String.valueOf(lastProcessedIndex));
         } catch (IOException e) {
@@ -233,6 +241,7 @@ public final class PluginTemplate extends Plugin {
     }
 
     private int loadState() {
+        assert STATE_FILE_PATH != null;
         File stateFile = new File(STATE_FILE_PATH);
         if (!stateFile.exists()) {
             try {

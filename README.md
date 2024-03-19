@@ -1,5 +1,5 @@
 
-# A Banners.json reaplcer for a certain anime game
+# A Banners.json replacer for a certain anime game
 
 A simple Banners.json replacer plugin to be used with Grasscutter
 ## Features

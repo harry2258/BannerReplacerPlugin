@@ -8,6 +8,7 @@ A simple Banners.json replacer plugin to be used with Grasscutter.
 - Auto reload on banner change. `watchGachaConfig` should be doing this but is not.
 - Sends a message to all online players when the banner is swapped.
 - Updates the "Time Remaining" on the wish to what is set in config.
+- Custom message to send in game when wishes are updated
 - Resumes on the last banner, not perfect as it goes by the file number and not the game. (Delete the `state.json` file within the `/Plugin/ReplaceBannerJSON` folder to start from beginning)
 
 ## Installation

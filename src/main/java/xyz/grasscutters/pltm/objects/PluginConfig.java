@@ -15,7 +15,9 @@ import java.lang.reflect.Type;
  * Use {@link Gson#fromJson(Reader, Type)} to load the values set from a reader/string into a new instance of this class.
  */
 public class PluginConfig {
-    public long ReloadTime = 30;
+    public long RefreshTime = 30;
+    public String message = "New wishes are available!";
+    public boolean SendMessage = true;
 
     /**
      * When saved with {@link Gson#toJson(Object)}, it produces:

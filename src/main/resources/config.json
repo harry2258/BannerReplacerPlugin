@@ -1,3 +1,5 @@
 {
- "ReloadTime": 45
+ "RefreshTime": 45,
+ "Message": "New Wishes are in",
+ "SendMessage": false
 }

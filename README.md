@@ -1,7 +1,8 @@
 
 # A Banners.json replacer for a certain anime game
 
-A simple Banners.json replacer plugin to be used with Grasscutter
+A simple Banners.json replacer plugin to be used with Grasscutter.
+
 ## Features
 
 - Auto reload on banner change. `watchGachaConfig` should be doing this but is not.
@@ -12,6 +13,7 @@ A simple Banners.json replacer plugin to be used with Grasscutter
 ## TODO
 - Make it so you can toggle to send a message or not in `config.json`.
 - Also make the message customizable if the message is toggled.
+
 ## Installation
 
 1) Download the latest JAR from the [relases section](https://github.com/harry2258/BannerReplacerPlugin/releases/latest) (Or compile your own).

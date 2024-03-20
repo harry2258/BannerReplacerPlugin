@@ -82,10 +82,10 @@ public final class PluginTemplate extends Plugin {
             this.configuration = gson.fromJson(new FileReader(config), PluginConfig.class);
 
 
-            System.out.println("Set Reload time to: " + this.configuration.ReloadTime);
+            System.out.println("Set Reload time to: " + this.configuration.RefreshTime);
 
         } catch (Exception exception) {
-            this.configuration.ReloadTime = 30; //Set to 30 mins if the JSON is invalid.
+            this.configuration.RefreshTime = 30; //Set to 30 mins if the JSON is invalid.
             this.getLogger().error("Unable to load configuration file. Defaulting to 30 minutes");
         }
         
@@ -180,13 +180,15 @@ public final class PluginTemplate extends Plugin {
                     Grasscutter.getGameServer().getGachaSystem().load();
                     Grasscutter.getGameServer().getShopSystem().load();
 
-                    //Send a messaged to all online user
-                    for (Player p : Grasscutter.getGameServer().getPlayers().values()) {
-                        CommandHandler.sendMessage(p, "Wish shop updated!");
+                    //Send a messaged to all online user when wishes are refreshed
+                    if (this.getConfiguration().SendMessage) {
+                        for (Player p : Grasscutter.getGameServer().getPlayers().values()) {
+                            CommandHandler.sendMessage(p, this.configuration.message);
+                        }
                     }
 
                     //Debug
-                    this.getLogger().info("Replaced the banner with " + file.getName() +". Sleeping for "+ this.configuration.ReloadTime + " minutes.");
+                    this.getLogger().info("Replaced the banner with " + file.getName() +". Sleeping for "+ this.configuration.RefreshTime + " minutes.");
                     lastProcessedIndex = i;
                     saveState(lastProcessedIndex);
 
@@ -197,10 +199,10 @@ public final class PluginTemplate extends Plugin {
 
                 try {
                     long SleepTime;
-                    if (this.configuration.ReloadTime <= 0) {
+                    if (this.configuration.RefreshTime <= 0) {
                         SleepTime = 1;
                     } else {
-                        SleepTime = this.configuration.ReloadTime;
+                        SleepTime = this.configuration.RefreshTime;
                     }
                     Thread.sleep(SleepTime * 60 * 1000);  // sleep for configured minutes
                 } catch (InterruptedException e) {
@@ -220,7 +222,7 @@ public final class PluginTemplate extends Plugin {
                 if (value.isJsonObject() || value.isJsonArray()) {
                     updateEndTime(value);
                 } else if (key.equals("endTime")) {
-                    long endTimeUnix = (System.currentTimeMillis() / 1000) + this.configuration.ReloadTime * 60; // Current Unix time + configured minutes
+                    long endTimeUnix = (System.currentTimeMillis() / 1000) + this.configuration.RefreshTime * 60; // Current Unix time + configured minutes
                     jsonObject.addProperty(key, endTimeUnix);
                 }
             }
